@@ -88,7 +88,6 @@ def generate_artifact():
         MODEL_FALLBACK = [
             'gemini-2.0-flash',
             'gemini-2.0-flash-lite',
-            'gemma-4-26b-a4b-it',
             'gemini-2.5-flash',
         ]
         generated_text = None

@@ -56,6 +56,7 @@
         .markdown-body th, .markdown-body td { border: 1px solid var(--alpha-10); padding: 0.5rem; }
         .markdown-body th { background: var(--alpha-5); }
     </style>
+    <link rel="stylesheet" href="../css/responsive.css">
 </head>
 
 <body>
@@ -254,10 +255,12 @@
             const printWindow = window.open('', '', 'height=800,width=800');
             printWindow.document.write('<html><head><title>' + title + '</title>');
             printWindow.document.write('<style>body{font-family:sans-serif;line-height:1.6;padding:20px;white-space:pre-wrap;}</style>');
-            printWindow.document.write('</head><body>');
+            printWindow.document.write('    <link rel="stylesheet" href="../css/responsive.css">
+</head><body>');
             printWindow.document.write('<h1>' + title + '</h1>');
             printWindow.document.write('<div>' + contentToPrint.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>');
-            printWindow.document.write('</body></html>');
+            printWindow.document.write('    <script src="../js/mobile-nav.js"></script>
+</body></html>');
             printWindow.document.close();
             
             // Wait for it to load, then print and close
@@ -329,6 +332,7 @@
     </script>
     <script src="../js/auth.js"></script>
     <script src="../js/user-profile.js"></script>
+    <script src="../js/mobile-nav.js"></script>
 </body>
 
 </html>

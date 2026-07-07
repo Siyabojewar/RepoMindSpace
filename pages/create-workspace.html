@@ -184,6 +184,7 @@
     </style>
     <script src="../js/config.js"></script>
     <script src="../js/theme.js"></script>
+    <link rel="stylesheet" href="../css/responsive.css">
 </head>
 
 <body>
@@ -307,7 +308,7 @@
                         </div>
 
                         <div id="zipSection" class="form-group-saas" style="display: none; margin-bottom: 2.5rem;">
-                            <div style="border: 2px dashed var(--alpha-10); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s ease;">
+                            <div id="dropzone" style="border: 2px dashed var(--alpha-10); border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s ease;">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="margin-bottom: 1rem;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
@@ -355,7 +356,7 @@
 
         // Dropzone interaction
         const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('repoZip');
+        const fileInput = document.getElementById('zipFile');
 
         dropzone.addEventListener('click', () => fileInput.click());
 
@@ -372,12 +373,28 @@
                 e.preventDefault();
                 dropzone.style.borderColor = 'var(--alpha-20)';
                 dropzone.style.background = 'rgba(0,0,0,0.2)';
+                if (evt === 'drop' && e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    // Optional: Update UI to show filename
+                    const fileName = e.dataTransfer.files[0].name;
+                    const p = dropzone.querySelector('p');
+                    if(p) p.innerText = fileName;
+                }
             });
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const fileName = fileInput.files[0].name;
+                const p = dropzone.querySelector('p');
+                if(p) p.innerText = fileName;
+            }
         });
     </script>
 
     <script src="../js/auth.js"></script>
     <script src="../js/user-profile.js"></script>
     <script src="../js/workspace.js?v=4"></script>
+    <script src="../js/mobile-nav.js"></script>
 </body>
 </html>
