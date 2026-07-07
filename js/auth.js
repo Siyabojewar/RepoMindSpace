@@ -1,7 +1,7 @@
 // auth.js - Handles authentication logic
 
 const API_BASE_URL = `${API_BASE}/api/auth`;
-const GOOGLE_CLIENT_ID = '1091939061408-1rpl2tqd6tn2iulba1oo8v1cfh94t4bs.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '505400354622-p4tnhsrpbkkdvdb6g4vs1sa85gon3q4v.apps.googleusercontent.com';
 
 document.addEventListener('DOMContentLoaded', () => {
 
