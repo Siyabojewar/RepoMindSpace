@@ -111,7 +111,14 @@ def generate_artifact():
                 continue
 
         if generated_text is None:
-            return jsonify({'error': f'All AI models are currently rate-limited. Please try again in a few minutes. Details: {str(last_error)}'}), 429
+            err_str = str(last_error)
+            if 'referer' in err_str.lower() or 'blocked' in err_str.lower():
+                return jsonify({
+                    'error': 'API key is restricted to browser use only. Please remove HTTP referrer restrictions from your key at console.cloud.google.com/apis/credentials.'
+                }), 403
+            elif 'API_KEY_INVALID' in err_str or 'API key not valid' in err_str:
+                return jsonify({'error': 'Invalid Gemini API key. Please update GEMINI_API_KEY in your .env file.'}), 401
+            return jsonify({'error': f'All AI models are currently rate-limited. Please try again in a few minutes.'}), 429
         
         # 5. Save to DB
         artifact_id = str(uuid.uuid4())

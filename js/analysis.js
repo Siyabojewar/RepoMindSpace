@@ -106,24 +106,37 @@ document.addEventListener('DOMContentLoaded', () => {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${token}` }
                     })
-                    .then(res => res.json())
-                    .then(summaryData => {
+                    .then(async res => {
                         clearInterval(msgInterval);
                         summaryLoader.style.display = 'none';
-                        if (summaryData.summary) {
+                        let summaryData;
+                        try { summaryData = await res.json(); } catch(e) { summaryData = {}; }
+
+                        if (res.ok && summaryData.summary) {
                             summaryText.innerText = summaryData.summary;
                             summaryText.style.display = 'block';
                             showNotification("Analysis Summary is ready!");
-                        } else {
-                            summaryText.innerText = "Failed to generate AI summary.";
+                        } else if (res.status === 429) {
+                            // Quota exceeded — show friendly message, don't alert
+                            summaryText.innerText = summaryData.message ||
+                                "AI quota exceeded. Please try again in a few minutes.";
                             summaryText.style.display = 'block';
+                            summaryText.style.color = 'var(--text-muted)';
+                            showNotification("⚠️ AI quota limit reached. Try again shortly.");
+                        } else {
+                            summaryText.innerText = "Could not generate AI summary at this time.";
+                            summaryText.style.display = 'block';
+                            summaryText.style.color = 'var(--text-muted)';
                         }
                     })
                     .catch(err => {
                         clearInterval(msgInterval);
                         summaryLoader.style.display = 'none';
-                        summaryText.innerText = "Error generating AI summary.";
+                        // Network error (offline, server down, CORS) — show inline, no alert popup
+                        summaryText.innerText = "Network error: Could not reach the server. Check your connection and try again.";
                         summaryText.style.display = 'block';
+                        summaryText.style.color = 'var(--text-muted)';
+                        console.warn('[Summary] Network error:', err);
                     });
                 }
             }

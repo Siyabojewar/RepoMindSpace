@@ -438,6 +438,41 @@
     <script src="../js/analysis.js"></script>
     <script src="../js/generation.js"></script>
     <script>
+        // Styled toast notification (replaces browser alert())
+        function showToast(message, type = 'error') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.cssText = 'position:fixed;top:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:10px;max-width:400px;';
+                document.body.appendChild(container);
+            }
+            const colors = {
+                error:   { bg: 'rgba(239,68,68,0.95)',   icon: '&#x2715;' },
+                warning: { bg: 'rgba(245,158,11,0.95)',  icon: '&#x26A0;' },
+                success: { bg: 'rgba(16,185,129,0.95)',  icon: '&#x2713;' },
+                info:    { bg: 'rgba(124,58,237,0.95)',  icon: '&#x2139;' }
+            };
+            const c = colors[type] || colors.error;
+            const toast = document.createElement('div');
+            toast.style.cssText = `background:${c.bg};color:#fff;padding:14px 18px;border-radius:12px;font-size:0.9rem;line-height:1.4;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.3);transform:translateX(120%);transition:transform 0.3s ease;display:flex;gap:10px;align-items:flex-start;`;
+            toast.innerHTML = `<span style="font-size:1.1rem;flex-shrink:0;">${c.icon}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => { toast.style.transform = 'translateX(0)'; });
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120%)';
+                setTimeout(() => toast.remove(), 350);
+            }, 6000);
+        }
+
+        function resetBtn(btnElement, originalText) {
+            btnElement.disabled = false;
+            btnElement.querySelector('span').innerText = originalText;
+            btnElement.style.opacity = '1';
+            btnElement.style.cursor = 'pointer';
+            btnElement.style.background = '';
+        }
+
         async function generate(type, btnElement) {
             // Update UI state on the clicked button
             const originalText = btnElement.querySelector('span').innerText;
@@ -451,18 +486,19 @@
             const token = localStorage.getItem('token');
             
             if (!workspaceId || !token) {
-                alert("Missing workspace context. Please select a workspace first.");
-                btnElement.disabled = false;
-                btnElement.querySelector('span').innerText = originalText;
-                btnElement.style.opacity = '1';
-                btnElement.style.cursor = 'pointer';
-                btnElement.style.background = '';
+                showToast('Missing workspace context. Please select a workspace first.', 'warning');
+                resetBtn(btnElement, originalText);
                 return;
             }
+
+            // 3-minute abort timeout for long-running AI generation
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
 
             try {
                 const response = await fetch(`${API_BASE}/api/artifacts/generate`, {
                     method: 'POST',
+                    signal: controller.signal,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -472,26 +508,29 @@
                         type: type
                     })
                 });
+                clearTimeout(timeoutId);
 
-                const data = await response.json();
+                let data;
+                try { data = await response.json(); } catch(e) { data = {}; }
+
                 if (response.ok) {
                     window.location.href = `edit-artifact.html?id=${data.artifact_id}`;
+                } else if (response.status === 429) {
+                    showToast('AI quota exceeded \u2014 all models are rate-limited. Please wait a few minutes and try again.', 'warning');
+                    resetBtn(btnElement, originalText);
                 } else {
-                    alert(data.error || 'Failed to generate artifact.');
-                    btnElement.disabled = false;
-                    btnElement.querySelector('span').innerText = originalText;
-                    btnElement.style.opacity = '1';
-                    btnElement.style.cursor = 'pointer';
-                    btnElement.style.background = '';
+                    showToast(data.error || 'Failed to generate artifact. Please try again.', 'error');
+                    resetBtn(btnElement, originalText);
                 }
             } catch (error) {
-                console.error("Error generating artifact:", error);
-                alert('Network error while generating artifact.');
-                btnElement.disabled = false;
-                btnElement.querySelector('span').innerText = originalText;
-                btnElement.style.opacity = '1';
-                btnElement.style.cursor = 'pointer';
-                btnElement.style.background = '';
+                clearTimeout(timeoutId);
+                console.error('Error generating artifact:', error);
+                if (error.name === 'AbortError') {
+                    showToast('Generation timed out (3 min). The server may still be processing. Refresh to check for new artifacts.', 'warning');
+                } else {
+                    showToast('Network error: Could not reach the server. Check your connection and try again.', 'error');
+                }
+                resetBtn(btnElement, originalText);
             }
         }
 

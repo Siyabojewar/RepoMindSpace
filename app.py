@@ -25,6 +25,37 @@ def create_app():
     db = client[app.config['MONGO_DB_NAME']]
     app.config['DB'] = db
 
+    # -- Validate Gemini API key on startup ----------------------------------
+    def _validate_gemini_key():
+        try:
+            key = os.getenv('GEMINI_API_KEY')
+            if not key:
+                print('\n[GEMINI] ERROR: GEMINI_API_KEY is missing from .env!')
+                return
+            import google.generativeai as genai
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            model.generate_content('ping')
+            print('\n[GEMINI] OK: API key is valid and working (gemini-2.5-flash)')
+        except Exception as e:
+            err = str(e)
+            if 'referer' in err.lower() or 'blocked' in err.lower() or 'HTTP_REFERRER' in err:
+                print('\n[GEMINI] ERROR: KEY RESTRICTED - This key has HTTP referrer restrictions.')
+                print('   It only works from a browser, not a server backend.')
+                print('   FIX: Go to https://console.cloud.google.com/apis/credentials')
+                print('   Edit the key -> Application restrictions -> set to "None"')
+                print('   Then save and restart the server.')
+            elif 'API_KEY_INVALID' in err or 'API key not valid' in err:
+                print('\n[GEMINI] ERROR: INVALID API KEY - The key in .env is malformed or revoked.')
+                print('   FIX: Go to https://aistudio.google.com/app/apikey and create a new key.')
+            elif '429' in err or 'quota' in err.lower() or 'ResourceExhausted' in err:
+                print('\n[GEMINI] WARNING: QUOTA EXCEEDED - Free tier daily limit reached.')
+                print('   FIX: Wait for quota reset, or use a key from a new Google Cloud project.')
+            else:
+                print(f'\n[GEMINI] WARNING: Key check failed: {err[:120]}')
+    _validate_gemini_key()
+    # --------------------------------------------------------------------------
+
     # Register API Blueprints
     from routes.auth import auth_bp
     from routes.workspace import workspace_bp

@@ -276,7 +276,14 @@ def generate_summary(workspace_id):
             context_string += f"File: {path}\nContent:\n{content[:400]}\n\n"
             
         import google.generativeai as genai
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        from google.api_core.exceptions import ResourceExhausted
+        from dotenv import load_dotenv
+        # Force reload .env so the freshest API key is always used (important on Render)
+        load_dotenv(override=True)
+        gemini_api_key = os.getenv('GEMINI_API_KEY')
+        if not gemini_api_key:
+            return jsonify({'error': 'Gemini API key is not configured on the server.'}), 500
+        genai.configure(api_key=gemini_api_key)
         
         prompt = f"""Analyze the following codebase and provide a concise 2-3 sentence high-level summary of what this repository does and what technologies it uses.
 
@@ -291,26 +298,43 @@ Codebase:
         
         MODEL_FALLBACK = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash']
         summary = None
+        last_error = None
+        quota_hit = False
         
         for model_name in MODEL_FALLBACK:
             try:
+                print(f"[SUMMARY] Trying model: {model_name}")
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 summary = response.text
                 if summary:
+                    print(f"[SUMMARY] Success with model: {model_name}")
                     break
+            except ResourceExhausted as e:
+                print(f"[SUMMARY] Quota hit for {model_name}, trying next...")
+                last_error = e
+                quota_hit = True
+                continue
             except Exception as e:
-                print(f"Model {model_name} failed: {e}")
+                print(f"[SUMMARY] Model {model_name} failed: {e}")
+                last_error = e
                 continue
                 
         if not summary:
-            return jsonify({'error': 'All models failed to generate summary'}), 500
+            if quota_hit:
+                return jsonify({
+                    'error': 'quota_exceeded',
+                    'message': 'AI quota exceeded. The summary could not be generated right now. Please try again in a few minutes.'
+                }), 429
+            return jsonify({'error': str(last_error) if last_error else 'All models failed to generate summary'}), 500
         
         # Save to DB so we don't have to generate it again
         db.workspaces.update_one({'_id': workspace_id}, {'$set': {'summary': summary}})
         
         return jsonify({'summary': summary}), 200
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @workspace_bp.route('/stats', methods=['GET'])
