@@ -3,6 +3,7 @@
 **RepoMind Space** is an AI-powered repository intelligence platform. Import any GitHub repository or ZIP archive, automatically analyze the codebase, generate rich documentation artifacts, and have real-time AI-assisted conversations about your code — all from a clean, modern web interface.
 
 🔗 **Live Demo:** [https://repomind-space.onrender.com]
+🔗 **Demo Video:** [https://drive.google.com/file/d/1Nkzj09wCHtBTlNmQsEhAmoR3QpkmYQM1/view?usp=sharing]
 
 ---
 
